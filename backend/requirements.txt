@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+pinecone
+sentence-transformers
+torch
+pillow
+requests
+python-dotenv
+pandas
+datasets
