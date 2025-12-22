@@ -86,7 +86,7 @@ for item in dataset:
         response = requests.get(image_url, headers=headers, timeout=5)
 
         if response.status_code != 200:
-            print(f"⚠️  Skipping {title[:20]}... (Status {response.status_code})")
+            print(f"Skipping {title[:20]}... (Status {response.status_code})")
             continue
 
         # convert to PIL image
