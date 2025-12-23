@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from io import BytesIO
@@ -29,10 +29,12 @@ app.add_middleware(
 print("Loading CLIP Model...")
 clip_model = SentenceTransformer('clip-ViT-B-32')
 
-# load YOLO model - "the eye"
-print("Loading YOLO Model...")
-yolo_model = YOLO('yolov8n.pt') # n for nano (smallest + fastest)
+# load YOLO-World model - "the eye"
+print("Loading YOLO-World Model...")
+yolo_model = YOLO('yolov8s-world.pt') # n for nano (smallest + fastest)
 
+# THIS LINE IS USED TO TEACH THE MODEL - tell it exactly what to look for (MAY NEED MODIFICATIONS)
+yolo_model.set_classes(["lamp", "floor lamp", "sofa", "couch", "table", "chair", "plant", "bed"])
 
 print("Connecting to Pinecone...")
 pc = Pinecone(api_key = PINECONE_API_KEY)
@@ -44,7 +46,7 @@ def home():
 
 
 @app.post("/search")
-async def search_image(file: UploadFile = File(...)):
+async def search_image(file: UploadFile = File(...), label: str = Form(None)):
     try:
         # read image
         image_data = await file.read()
@@ -56,14 +58,49 @@ async def search_image(file: UploadFile = File(...)):
         # query pinecone
         results = index.query(
             vector=embedding,
-            top_k=5,
+            top_k=50,
             include_metadata=True
         )
 
         # convert pinecone vector into python dictionary
         final_matches = [match.to_dict() for match in results.matches]
 
+        if label:
+            print(f"Filtering for: {label}")
+            filtered_matches = []
+
+            #key word mapping (YOLO label -> Amazon keywords), adding synonyms
+            keywords = [label.lower()]
+
+            # SYNONYMS
+            if label == "couch":
+                keywords.append("sofa")
+            
+            if label == "sofa":
+                keywords.append("couch")
+            
+            if label == "cup":
+                keywords.append("mug")
+            
+            for match in final_matches:
+                product_name = match['metadata']['name'].lower()
+
+                # check if any keyword is in the product name
+                if any(k in product_name for k in keywords):
+                    filtered_matches.append(match)
+                
+            # if the filter worked, use it, if it filtered EVEYRTHING, fall back to raw visual matches
+
+            if filtered_matches:
+                final_matches = filtered_matches[:5] # Return top 5 valid ones
+            else:
+                print("Warning: Filter was too strict, returning raw visual matches.")
+                final_matches = final_matches[:5]
+        else:
+            final_matches = final_matches[:5]
+        
         return {"matches":final_matches}
+
     
     except Exception as e:
         print(f"Error: {e}")
@@ -79,7 +116,8 @@ async def detect_objects(file: UploadFile = File(...)):
         image = Image.open(BytesIO(image_data)).convert("RGB")
 
         # Run YOLO
-        results = yolo_model(image, conf=0.25) # keep predictions YOLO is 25% sure about
+        yolo_model.set_classes(["lamp", "floor lamp", "sofa", "couch", "table", "chair", "plant", "bed"]) # re-assert custom classes
+        results = yolo_model.predict(image, conf=0.1) # keep predictions YOLO is 10% sure about
 
         # format for frontend
         detections = []
@@ -99,7 +137,8 @@ async def detect_objects(file: UploadFile = File(...)):
                     "score":float(box.conf[0])
                 })
 
-                return {"detections":detections}
+        return {"detections":detections}
+
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
