@@ -100,7 +100,7 @@ function App() {
     <div className="min-h-screen bg-gray-900 text-white p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-5xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-          Vibe Search <span className="text-2xl text-gray-500 font-normal ml-2">(AI Object Detection)</span>
+          Vibe Shop <span className="text-2xl text-gray-500 font-normal ml-2">(AI Object Detection)</span>
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
