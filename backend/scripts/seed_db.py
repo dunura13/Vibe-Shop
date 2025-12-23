@@ -56,7 +56,7 @@ dataset = load_dataset(
 )
 
 # process and upsert 
-MAX_ITEMS = 100 # limit to first 100 items for testing
+MAX_ITEMS = 2000 # limit to first 100 items for testing
 vectors = []
 processed_count = 0
 
